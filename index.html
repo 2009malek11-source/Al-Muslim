@@ -89,7 +89,7 @@ html{font-size:calc(100% * var(--font-scale,1));}
 .logo:after{content:""!important;display:none!important;}
 @media(max-width:680px){.logo{width:43px!important;height:43px!important;border-radius:14px!important;}}
 </style>
-<script src="app-config.js?v=115.4"></script>
+<script src="app-config.js?v=115.5"></script>
 
 <style>
 .extraGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.extraCard{padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.pillRow{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);cursor:pointer}.mutedBox{background:rgba(127,127,127,.08);padding:12px;border-radius:14px}.shareCard{background:linear-gradient(135deg,rgba(21,91,73,.96),rgba(43,128,100,.9));color:#fff;border-radius:22px;padding:22px;text-align:center}@media(max-width:680px){.extraGrid{grid-template-columns:1fr}}
@@ -6085,34 +6085,25 @@ const AR='٠١٢٣٤٥٦٧٨٩';
  window.v101ReadersInit=()=>{tools();bar()};
 })();
 
-/* ================= القبلة: المسافة والزاوية واهتزاز المواجهة ================= */
+/* ================= إضافات القبلة: خريطة ونسخ واهتزاز ================= */
 (function(){
- const K={lat:21.4225,lon:39.8262},rad=Math.PI/180;
- function calc(loc){
-  const p1=loc.lat*rad,p2=K.lat*rad,dl=(K.lon-loc.lon)*rad;
-  const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
-  const brg=(Math.atan2(y,x)/rad+360)%360;
-  const d=2*6371*Math.asin(Math.sqrt(Math.sin((K.lat-loc.lat)*rad/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2));
-  return {brg,d};
- }
- const dir=a=>['شمال','شمال شرق','شرق','جنوب شرق','جنوب','جنوب غرب','غرب','شمال غرب'][Math.round(a/45)%8];
  let lastVib=0;
  function upd(){
   const page=$('qibla');if(!page||!page.classList.contains('active'))return;
+  const q=window.v107Qibla,st=q&&q.state;
   let box=$('v101QiblaInfo');
-  if(!box){box=document.createElement('div');box.id='v101QiblaInfo';box.className='card v101QiblaInfo';const ro=page.querySelector('.qiblaReadout');if(!ro)return;ro.insertAdjacentElement('afterend',box);
+  if(!box){box=document.createElement('div');box.id='v101QiblaInfo';box.className='card v101QiblaInfo';const ro=page.querySelector('.qbReadout');if(!ro)return;ro.insertAdjacentElement('afterend',box);
    box.innerHTML='<div id="v101QiblaTxt" class="mini">حدّد موقعك لعرض المسافة إلى الكعبة.</div><label class="stgChk" style="display:flex;margin-top:8px"><input type="checkbox" id="v101QVib"> اهتزاز خفيف عند مواجهة القبلة</label><div class="controls"><button type="button" id="v101QMap">🗺️ الكعبة على الخريطة</button><button type="button" id="v101QCopy">📋 نسخ إحداثياتي</button></div>';
    const vb=$('v101QVib');vb.checked=LS.get('muslim-v101-qvib','1')==='1';vb.onchange=()=>LS.set('muslim-v101-qvib',vb.checked?'1':'0');
-   $('v101QMap').onclick=()=>window.open('https://www.google.com/maps/search/?api=1&query=21.4225,39.8262','_blank','noopener');
-   $('v101QCopy').onclick=async()=>{const l=getSelectedLocation();if(!l){alert('حدّد موقعك أولًا.');return}try{await navigator.clipboard.writeText(l.lat.toFixed(6)+','+l.lon.toFixed(6));$('v101QCopy').textContent='✅ تم النسخ'}catch(e){prompt('انسخ الإحداثيات:',l.lat.toFixed(6)+','+l.lon.toFixed(6))}setTimeout(()=>{$('v101QCopy').textContent='📋 نسخ إحداثياتي'},1500)};
+   $('v101QMap').onclick=()=>{const l=st&&st.loc;window.open('https://www.google.com/maps/dir/?api=1&'+(l?'origin='+l.lat+','+l.lon+'&':'')+'destination=21.422487,39.826206','_blank','noopener')};
+   $('v101QCopy').onclick=async()=>{const l=st&&st.loc;if(!l){alert('حدّد موقعك أولًا.');return}const c=l.lat.toFixed(6)+','+l.lon.toFixed(6);try{await navigator.clipboard.writeText(c);$('v101QCopy').textContent='✅ تم النسخ'}catch(e){prompt('انسخ الإحداثيات:',c)}setTimeout(()=>{$('v101QCopy').textContent='📋 نسخ إحداثياتي'},1500)};
   }
-  let l=null;try{l=getSelectedLocation()}catch(e){}
   const t=$('v101QiblaTxt');if(!t)return;
-  if(!l){t.textContent='حدّد موقعك لعرض المسافة إلى الكعبة.';return}
-  const c=calc(l),dd=c.d<10?c.d.toFixed(1):Math.round(c.d).toLocaleString('en-US');
-  const f=s=>LS.get('muslim-digit-mode','arabic')==='arabic'?String(s).replace(/[0-9]/g,x=>AR[+x]):String(s);
-  t.innerHTML=`📏 المسافة إلى الكعبة: <b>${f(dd)} كم</b><br>🧭 زاوية القبلة: <b>${f(Math.round(c.brg))}°</b> من الشمال (${dir(c.brg)})<br>📍 موقعك: ${f(l.lat.toFixed(4))}، ${f(l.lon.toFixed(4))}`;
-  try{if($('v101QVib').checked&&typeof qiblaHeading==='number'&&qiblaHeading!=null&&qiblaBearing!=null){let dl=Math.abs(((qiblaBearing-qiblaHeading+540)%360)-180);if(dl<3&&Date.now()-lastVib>6000&&navigator.vibrate){lastVib=Date.now();navigator.vibrate([40,40,40])}}}catch(e){}
+  const l=st&&st.loc,b=st&&st.bearing,d=st&&st.dist;
+  if(!l||b==null){t.textContent='حدّد موقعك لعرض المسافة إلى الكعبة.';return}
+  const fmt=n=>LS.get('muslim-digit-mode','arabic')==='arabic'?String(n).replace(/[0-9]/g,x=>AR[+x]):String(n);
+  t.innerHTML=`📏 المسافة إلى الكعبة: <b>${fmt(d<10?d.toFixed(1):Math.round(d).toLocaleString('en-US'))} كم</b><br>🧭 زاوية القبلة: <b>${fmt(Math.round(b))}°</b> من الشمال (${window.v107Qibla.cardinal(b)})<br>📍 موقع القبلة: ${fmt(l.lat.toFixed(4))}، ${fmt(l.lon.toFixed(4))}`;
+  try{const heading=st.smooth==null?null:((st.smooth+(window.v107Qibla.getDeclination?window.v107Qibla.getDeclination():0)+st.off+360)%360);if($('v101QVib').checked&&heading!=null&&Math.abs(((b-heading+540)%360)-180)<3&&Date.now()-lastVib>6000&&navigator.vibrate){lastVib=Date.now();navigator.vibrate([40,40,40])}}catch(e){}
  }
  setInterval(upd,1500);window.v101QiblaInit=upd;
 })();
@@ -6666,17 +6657,17 @@ if(document.readyState==='complete')setTimeout(boot,200);else window.addEventLis
 })();
 </script>
 
-<link rel="stylesheet" href="style.css?v=115.4"><script src="script.js?v=115.4" defer></script>
+<link rel="stylesheet" href="style.css?v=115.5"><script src="script.js?v=115.5" defer></script>
 
-<link rel="stylesheet" href="app107.css?v=115.4">
-<script src="adhan-config.js?v=115.4"></script>
-<script src="prayer.js?v=115.4"></script>
-<script src="push-client.js?v=115.4"></script>
-<script src="mushaf.js?v=115.4"></script>
-<script src="hadith107.js?v=115.4"></script>
-<script src="mosques.js?v=115.4"></script>
-<script src="abloop.js?v=115.4"></script>
-<script src="qibla.js?v=115.4"></script>
-<script src="app107.js?v=115.4"></script>
+<link rel="stylesheet" href="app107.css?v=115.5">
+<script src="adhan-config.js?v=115.5"></script>
+<script src="prayer.js?v=115.5"></script>
+<script src="push-client.js?v=115.5"></script>
+<script src="mushaf.js?v=115.5"></script>
+<script src="hadith107.js?v=115.5"></script>
+<script src="mosques.js?v=115.5"></script>
+<script src="abloop.js?v=115.5"></script>
+<script src="qibla.js?v=115.5"></script>
+<script src="app107.js?v=115.5"></script>
 </body>
 </html>
