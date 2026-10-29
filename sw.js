@@ -11,7 +11,7 @@ const VER='115.5';
 const CACHE='muslim-cache-v'+VER;
 const FONTS='muslim-fonts-v1';
 /* ملفات الواجهة بإصدار ثابت في الرابط (?v=): كل إصدار جديد = روابط جديدة، فلا يختلط قديم بجديد أبدًا */
-const CORE=['./','./index.html','./manifest.json','./app-config.js?v=115.5','./script.js?v=115.5','./assistant-cmd.js?v=115.5','./adhan-config.js?v=115.5','./prayer.js?v=115.5','./push-client.js?v=115.5','./mushaf.js?v=115.5','./hadith107.js?v=115.5','./mosques.js?v=115.5','./abloop.js?v=115.5','./qibla.js?v=115.5','./app107.js?v=115.5','./style.css?v=115.5','./app107.css?v=115.5'];
+const CORE=['./','./index.html','./manifest.json','./app-config.js?v=115.5','./script.js?v=115.5','./assistant-cmd.js?v=115.5','./travel.js?v=115.5','./adhan-config.js?v=115.5','./prayer.js?v=115.5','./push-client.js?v=115.5','./mushaf.js?v=115.5','./hadith107.js?v=115.5','./mosques.js?v=115.5','./abloop.js?v=115.5','./qibla.js?v=115.5','./app107.js?v=115.5','./style.css?v=115.5','./app107.css?v=115.5'];
 /* ---- أسباب «ظهور النسخة القديمة» سابقًا وعلاجها ----
    1) التثبيت كان ينتظر تنزيل كل الملفات (أكثر من ميغابايت) قبل التسلّم ⇒ يبقى القديم 30–120 ثانية مع الإنترنت الضعيف.
       الآن: التثبيت والتفعيل فوريان، والتخزين المسبق يجري لاحقًا في الخلفية (رسالة warm).

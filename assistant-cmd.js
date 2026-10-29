@@ -41,6 +41,7 @@ var SECTIONS=[
   ['settings',/(^| )(الاعدادات|اعدادات|الضبط)( |$)/,'الإعدادات'],
   ['prayer',/(^| )(مواقيت الصلاه|اوقات الصلاه|المواقيت|مواقيت|اوقات الصلاه)( |$)/,'مواقيت الصلاة'],
   ['install',/(^| )(التثبيت|تثبيت التطبيق|ثبت التطبيق)( |$)/,'تثبيت التطبيق'],
+  ['travel',/(^| )(وضع السفر|السفر|اذكار السفر|رحلتي|مسافر)( |$)/,'وضع السفر'],
   ['home',/(^| )(الرئيسيه|الصفحه الرئيسيه|البدايه)( |$)/,'الرئيسية']
 ];
 
@@ -148,7 +149,8 @@ function execute(c,q){
     return '🎧 فتحتُ لك القارئ <b>'+nm+'</b>'+(c.surah?' وبدأتُ تشغيل السورة '+c.surah+'.':'.');
   }
   if(c.kind==='section'){
-    if(c.id==='prayer'||c.id==='install'||c.id==='home'){show(c.id)}
+    if(c.id==='travel'&&window.v116Travel){window.v116Travel.open()}
+    else if(c.id==='prayer'||c.id==='install'||c.id==='home'){show(c.id)}
     else runAction({t:'section',id:c.id});
     return '✅ فتحتُ لك قسم <b>'+c.name+'</b>.';
   }

@@ -1281,9 +1281,9 @@ var rng=function(a,b){var o=[];for(var i=a;i<=b;i++)o.push(i);return o};
 /* ---------- 1) القرّاء من archive.org (روابط وأسماء ملفات متحقَّق منها) ---------- */
 var AR='حفص عن عاصم - مرتل',KH='خلف عن حمزة - رواية خلاد';
 var EXTRA=[
- {id:'ia-masad',pinned:1,name:'عبد الرحمن مسعد',rewaya:AR,server:'https://archive.org/download/010_20221110/',surahList:[10,19,23,29,32,49,73,78,87,88,100,107],search:['عبد الرحمن مسعد','عبدالرحمن مسعد']},
- {id:'ia-abbadi',pinned:1,name:'حسام الدين عبادي',rewaya:AR,server:'https://archive.org/download/Abbadi-Houssem-Eddine/',surahList:[1,12,14,15,17,18,19,31,32,36,38,44,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,72,74,75,76,77,78,81,85,86,88,93,99],search:['حسام الدين عبادي','حسام عبادي']},
- {id:'ia-khedr',pinned:1,name:'أحمد خضر',rewaya:AR,server:'https://archive.org/download/012_20221105_202211/',surahList:[1,7,12,15,18,19,20,21,22,24,25,27,29,30,31,32,36,38,43,44,45,46,47,48,49,52,53,54,55,56,61,64,67,68,69,70,71,72,75,76,78,79,80,81,83,84,86,88,89,90,91,97,110],search:['أحمد خضر','احمد خضر']},
+ {id:'ia-masad',name:'عبد الرحمن مسعد',rewaya:AR,server:'https://archive.org/download/010_20221110/',surahList:[10,19,23,29,32,49,73,78,87,88,100,107],search:['عبد الرحمن مسعد','عبدالرحمن مسعد']},
+ {id:'ia-abbadi',name:'حسام الدين عبادي',rewaya:AR,server:'https://archive.org/download/Abbadi-Houssem-Eddine/',surahList:[1,12,14,15,17,18,19,31,32,36,38,44,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,72,74,75,76,77,78,81,85,86,88,93,99],search:['حسام الدين عبادي','حسام عبادي']},
+ {id:'ia-khedr',name:'أحمد خضر',rewaya:AR,server:'https://archive.org/download/012_20221105_202211/',surahList:[1,7,12,15,18,19,20,21,22,24,25,27,29,30,31,32,36,38,43,44,45,46,47,48,49,52,53,54,55,56,61,64,67,68,69,70,71,72,75,76,78,79,80,81,83,84,86,88,89,90,91,97,110],search:['أحمد خضر','احمد خضر']},
  {id:'ia-saltani',name:'مفتاح السلطني',rewaya:KH,server:'https://archive.org/download/khalladsaltani/',surahList:rng(1,79),search:['مفتاح السلطني']},
  {id:'ia-ynouh',name:'يوسف نوح أحمد',rewaya:KH,server:'https://archive.org/download/reeding-of--khallad-an--hamzah----------------by_______yousef-nouh-ahmad-mp3--/Khallad_',surahList:rng(3,57),search:['يوسف نوح أحمد']}
 ];
@@ -1329,8 +1329,9 @@ function build(rs){
 function finalize(list){
   var ex=EXTRA.map(function(x){return Object.assign({},x)});
   var all=list.concat(ex);
-  var pin=all.filter(function(r){return r.pinned}),rest=all.filter(function(r){return !r.pinned});
-  RECITERS.splice.apply(RECITERS,[0,RECITERS.length].concat(pin,rest));
+  /* ترتيب أبجدي واحد لكل القرّاء — لا قارئ مثبَّت في القمة */
+  all.sort(function(a,b){return String(a.name).localeCompare(String(b.name),'ar')||String(a.rewaya).localeCompare(String(b.rewaya),'ar')});
+  RECITERS.splice.apply(RECITERS,[0,RECITERS.length].concat(all));
 }
 var curReaderId=null;
 function renderAfterLoad(){
