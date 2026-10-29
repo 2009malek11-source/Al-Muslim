@@ -11,7 +11,7 @@ const VER='115.5';
 const CACHE='muslim-cache-v'+VER;
 const FONTS='muslim-fonts-v1';
 /* ملفات الواجهة بإصدار ثابت في الرابط (?v=): كل إصدار جديد = روابط جديدة، فلا يختلط قديم بجديد أبدًا */
-const CORE=['./','./index.html','./manifest.json','./app-config.js?v=115.5','./script.js?v=115.5','./adhan-config.js?v=115.5','./prayer.js?v=115.5','./push-client.js?v=115.5','./mushaf.js?v=115.5','./hadith107.js?v=115.5','./mosques.js?v=115.5','./abloop.js?v=115.5','./qibla.js?v=115.5','./app107.js?v=115.5','./style.css?v=115.5','./app107.css?v=115.5'];
+const CORE=['./','./index.html','./manifest.json','./app-config.js?v=115.5','./script.js?v=115.5','./assistant-cmd.js?v=115.5','./adhan-config.js?v=115.5','./prayer.js?v=115.5','./push-client.js?v=115.5','./mushaf.js?v=115.5','./hadith107.js?v=115.5','./mosques.js?v=115.5','./abloop.js?v=115.5','./qibla.js?v=115.5','./app107.js?v=115.5','./style.css?v=115.5','./app107.css?v=115.5'];
 /* ---- أسباب «ظهور النسخة القديمة» سابقًا وعلاجها ----
    1) التثبيت كان ينتظر تنزيل كل الملفات (أكثر من ميغابايت) قبل التسلّم ⇒ يبقى القديم 30–120 ثانية مع الإنترنت الضعيف.
       الآن: التثبيت والتفعيل فوريان، والتخزين المسبق يجري لاحقًا في الخلفية (رسالة warm).
@@ -22,9 +22,15 @@ self.addEventListener('install',e=>{e.waitUntil(self.skipWaiting())});
 self.addEventListener('activate',e=>{
   e.waitUntil((async()=>{
     const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k.indexOf('muslim-cache')===0&&k!==CACHE).map(k=>caches.delete(k)));
+    const stale=keys.filter(k=>!keepName(k));
+    await Promise.all(stale.map(k=>caches.delete(k)));          /* حذف كل أغلفة الإصدارات القديمة */
     if(self.registration.navigationPreload)try{await self.registration.navigationPreload.disable()}catch(_){}
     await self.clients.claim();
+    /* ترقية من إصدار قديم جدًا (صفحاته لا تملك منطق التحديث الجديد): نعيد تحميل النوافذ المفتوحة فورًا لتظهر النسخة الجديدة */
+    if(stale.some(k=>!/^muslim-cache-v115\./.test(k))){
+      const cs=await self.clients.matchAll({type:'window'});
+      cs.forEach(c=>{try{c.navigate(c.url)}catch(_){}});
+    }
   })());
 });
 /* تخزين مسبق هادئ بعد فتح الصفحة (لا يؤخر التحديث ولا عرض الصفحة) */
@@ -41,11 +47,16 @@ self.addEventListener('message',e=>{
   if(d.type==='skip-waiting')self.skipWaiting();
   if(d.type==='warm')e.waitUntil(precache());
 });
+/* بحث داخل كاش هذا الإصدار فقط — caches.match العام كان يقرأ من كل المخازن القديمة فيُرجع صفحات/ملفات إصدارات سابقة */
+const cm=(req,opt)=>caches.open(CACHE).then(c=>c.match(req,opt));
+/* مخازن بيانات المستخدم (تنزيلات، أحاديث، إعدادات) تبقى؛ أي مخزن آخر مجهول = غلاف تطبيق قديم يُحذف */
+const KEEP=['muslim-audio','muslim-files','muslim-config','muslim-hadith','muslim-human-audio','muslim-adhkar-audio','muslim-data','muslim-v80-ruqyah','muslim-fonts'];
+const keepName=k=>k===CACHE||KEEP.some(p=>k.indexOf(p)===0);
 function put(cache,key,res){if(res&&res.status===200&&(res.type==='basic'||res.type==='cors')){const c=res.clone();caches.open(cache).then(ca=>ca.put(key,c)).catch(()=>{})}return res}
 /* ملف بإصدار ثابت: من الكاش فورًا، وإلا من الشبكة ثم يُخزَّن */
 function cacheFirst(e){
   const req=e.request;
-  return caches.match(req).then(h=>h||fetch(req).then(r=>put(CACHE,req,r)).catch(()=>Response.error()));
+  return cm(req).then(h=>h||fetch(req).then(r=>put(CACHE,req,r)).catch(()=>Response.error()));
 }
 /* الصفحة وما قد يتغير بلا إصدار (manifest، qr.png): الشبكة أولًا بتحقق no-cache.
    إن تأخرت الشبكة نعرض المحفوظ ثم نُبلغ الصفحة بوجود تحديث عند وصول الجديد (دون تحويل قسري مزدوج). */
@@ -57,7 +68,7 @@ function netFirst(e){
   const wait=nav?4500:3000;
   return new Promise(res=>{
     let done=false,stale=null;
-    const find=()=>caches.match(key,opt);
+    const find=()=>cm(key,opt);
     const t=setTimeout(()=>{find().then(h=>{if(h&&!done){done=true;stale=h;res(h)}})},wait);
     fetch(req,{cache:'no-cache'}).then(r=>{
       clearTimeout(t);
@@ -71,14 +82,14 @@ function netFirst(e){
       if(!done){done=true;res(r)}
     }).catch(()=>{
       clearTimeout(t);if(done)return;
-      find().then(h=>{done=true;res(h||(nav?caches.match('./index.html'):Response.error()))});
+      find().then(h=>{done=true;res(h||(nav?cm('./index.html'):Response.error()))});
     });
   });
 }
 /* بقية الملفات المحلية (صور وأيقونات…): نسخة محفوظة فورًا + تحديث بالخلفية */
 function swr(e){
   const req=e.request;
-  return caches.match(req).then(hit=>{
+  return cm(req).then(hit=>{
     const net=fetch(req,{cache:'no-cache'}).then(r=>put(CACHE,req,r)).catch(()=>null);
     if(hit){e.waitUntil(net);return hit}
     return net.then(r=>r||Response.error());
@@ -91,13 +102,13 @@ self.addEventListener('fetch',e=>{
   const url=new URL(req.url),d=req.destination;
   if(url.origin===self.location.origin){
     const p=url.pathname;
-    if(p.endsWith('/sw.js')||p.endsWith('/service-worker.js'))return;
+    if(p.endsWith('/sw.js')||p.endsWith('/service-worker.js')||p.endsWith('/version.json'))return;   /* دائمًا من الشبكة مباشرة */
     if((d==='script'||d==='style')&&url.searchParams.has('v')){e.respondWith(cacheFirst(e));return}
     if(req.mode==='navigate'||d==='document'||d==='script'||d==='style'||d==='manifest'||p.endsWith('manifest.json')||/\/qr\.png$/.test(p)){e.respondWith(netFirst(e));return}
     e.respondWith(swr(e));return;
   }
   if(url.hostname==='fonts.googleapis.com'||url.hostname==='fonts.gstatic.com'){
-    e.respondWith(caches.match(req).then(hit=>{const net=fetch(req).then(r=>put(FONTS,req,r)).catch(()=>null);if(hit){e.waitUntil(net);return hit}return net.then(r=>r||Response.error())}));
+    e.respondWith(caches.open(FONTS).then(c=>c.match(req)).then(hit=>{const net=fetch(req).then(r=>put(FONTS,req,r)).catch(()=>null);if(hit){e.waitUntil(net);return hit}return net.then(r=>r||Response.error())}));
   }
 });
 /* ---------- الإشعارات ---------- */

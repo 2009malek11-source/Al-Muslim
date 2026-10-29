@@ -15,7 +15,7 @@ var LG=function(k,d){try{var v=localStorage.getItem(k);return v===null?d:JSON.pa
 var LS=function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 var R=Math.PI/180,KAABA={lat:21.422487,lon:39.826206};
 /* مفتاح جديد: أي معايرة محفوظة من إصدارات سابقة (قد تكون خاطئة) تُتجاهل ويبدأ الحساب من الصفر */
-var K_OFF='muslim-v115-qibla-off',K_DECL='muslim-v112-decl',locSeq=0;
+var K_OFF='muslim-v115-qibla-off',K_DECL='muslim-v112-decl';
 function norm(d){d=d%360;return d<0?d+360:d}
 function delta(a,b){var d=norm(b-a);return d>180?d-360:d}
 
@@ -86,24 +86,16 @@ function headingFromQuat(q,cam){
 
 /* ---------- 3) الانحراف المغناطيسي (WMM) ---------- */
 var decl=null,declSrc='';
-async function loadDecl(lat,lon,seq){
+async function loadDecl(lat,lon){
   var key=Math.round(lat*2)/2+','+Math.round(lon*2)/2,month=new Date().toISOString().slice(0,7),c=LG(K_DECL,null);
-  if(c&&c.key===key&&c.month===month&&isFinite(c.v)){
-    if(seq===locSeq){decl=c.v;declSrc='WMM';}
-    return;
-  }
+  if(c&&c.key===key&&c.month===month&&isFinite(c.v)){decl=c.v;declSrc='WMM';return}
   try{
     var m=await import('https://cdn.jsdelivr.net/npm/geomagnetism@0.2.0/+esm');
-    var g=m.default||m,model=g.model(new Date(),{allowOutOfBoundsModel:true}),info=model.point([lat,lon]);
-    if(seq!==locSeq)return;
-    if(info&&isFinite(info.decl)){decl=info.decl;declSrc='WMM';LS(K_DECL,{key:key,month:month,v:decl});}
-    else {decl=null;declSrc='';}
-  }catch(e){
-    if(seq!==locSeq)return;
-    if(c&&isFinite(c.v)&&c.key===key){decl=c.v;declSrc='WMM (محفوظ)';}
-    else {decl=null;declSrc='';}
-  }
-  info();tick();
+    var g=m.default||m;
+    var model=g.model(new Date(),{allowOutOfBoundsModel:true});
+    var info=model.point([lat,lon]);
+    if(info&&isFinite(info.decl)){decl=info.decl;declSrc='WMM';LS(K_DECL,{key:key,month:month,v:decl})}
+  }catch(e){if(c&&isFinite(c.v)&&c.key===key){decl=c.v;declSrc='WMM (محفوظ)'}}
 }
 
 /* ---------- 4) الشمس (للمعايرة) ---------- */
@@ -187,23 +179,19 @@ function getPos(){
   return once({enableHighAccuracy:true,timeout:9000,maximumAge:30000}).then(function(p){return p||once({enableHighAccuracy:false,timeout:9000,maximumAge:600000})});
 }
 async function locate(){
-  var seq=++locSeq;
   say('📍 جارٍ تحديد موقعك بدقة…');
   var p=await getPos();
-  if(seq!==locSeq)return false;
   if(!p){var sv=window.v107Prayer&&window.v107Prayer.getLoc&&window.v107Prayer.getLoc();if(sv)p={lat:sv.lat,lon:sv.lon,acc:sv.acc}}
   if(!p){say('تعذّر تحديد الموقع. فعّل GPS وأذن للموقع ثم أعد المحاولة.');return false}
-  S.loc=p;decl=null;declSrc='';
-  var q=qiblaFrom(p.lat,p.lon);S.bearing=q.bearing;S.dist=q.dist;
-  try{if(typeof window.setSelectedLocation==='function')window.setSelectedLocation(p.lat,p.lon,'موقع القبلة • GPS',p.acc)}catch(e){}
-  loadDecl(p.lat,p.lon,seq);
-  info();tick();return true;
+  S.loc=p;var q=qiblaFrom(p.lat,p.lon);S.bearing=q.bearing;S.dist=q.dist;
+  loadDecl(p.lat,p.lon).then(info);
+  info();return true;
 }
 
 /* ---------- الواجهة ---------- */
 function say(t){var e=$('qbText');if(e)e.textContent=t}
 function build(){
-  var s=$('qibla');if(!s||s.dataset.v115)return;s.dataset.v115='1';
+  var s=$('qibla');if(!s||s.dataset.v112)return;s.dataset.v112='1';
   s.innerHTML='<div class="section"><button class="back" onclick="show(\'home\')">←</button><div><h2>🧭 القبلة</h2><p>السهم يتحرك نحو القبلة بدقة — بتصحيح الانحراف المغناطيسي</p></div></div>'+
    '<div class="card qbCard"><div class="qbStage"><i class="qbTick t0"></i><i class="qbTick t1"></i><i class="qbTick t2"></i><i class="qbTick t3"></i><span class="qbNorth" id="qbNorth" title="الشمال">N</span>'+
    '<div class="qbArrow" id="qbArrow" aria-label="سهم القبلة"><svg viewBox="0 0 100 200" width="100%" height="100%"><defs><linearGradient id="qbg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--green)"/><stop offset="1" stop-color="var(--green2,var(--green))"/></linearGradient></defs><path d="M50 4 L88 70 L60 70 L60 190 L40 190 L40 70 L12 70 Z" fill="url(#qbg)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg><span class="qbTip">🕋</span></div><span class="qbHub"></span></div>'+
@@ -330,7 +318,7 @@ function calSun(){
 window.locateQibla=async function(){build();show('qibla');if(!S.loc)await locate();var ok=await startSensors();if(ok)tick()};
 window.enableCompass=startSensors;
 window.openQiblaMap=function(){var b=$('qbMap');if(b)b.click()};
-window.v107Qibla={openCam:openCam,closeCam:closeCam,bearingFrom:qiblaFrom,getDeclination:function(){return decl==null?0:decl},headingFromEuler:headingFromEuler,headingFromQuat:headingFromQuat,sunAz:sunAz,cardinal:cardinal,onOrient:onOrient,tick:tick,state:S};
+window.v107Qibla={openCam:openCam,closeCam:closeCam,bearingFrom:qiblaFrom,headingFromEuler:headingFromEuler,headingFromQuat:headingFromQuat,sunAz:sunAz,cardinal:cardinal,onOrient:onOrient,tick:tick,state:S};
 var _show=window.show;
 window.show=function(id){if(id!=='qibla'&&camOn)closeCam();var r=_show.apply(this,arguments);if(id==='qibla'){build();if(!S.loc)locate();tick()}return r};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();

@@ -266,29 +266,53 @@ window.v107ManageDownloads=function(){document.body.classList.add('dlManage');sh
 })();
 
 /* ---------------------------------------------------------------
-   7) طلب التثبيت عند أول زيارة من المتصفح
+   7) طلب التثبيت عند أول زيارة + إرشاد ما بعد التثبيت (v115.5)
+   - أول زيارة من المتصفح: نافذة واضحة تطلب تثبيت التطبيق (يمكن تأجيلها يومًا).
+   - بعد التثبيت: يُطلب من المستخدم إغلاق التطبيق وفتحه مرتين ليكتمل تحديث كل الملفات على هاتفه (تُعدّ الفتحات ويُعلَن الاكتمال).
    --------------------------------------------------------------- */
 (function(){
-  var dp=null,bar;
+  var dp=null,bar,K_OPEN='muslim-v115-opens',K_DONE='muslim-v115-setup-done',K_FIRST='muslim-v115-first-seen';
   function standalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+  function isIOS(){var u=navigator.userAgent||'';return /iPad|iPhone|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
   window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;maybeShow()});
-  window.addEventListener('appinstalled',function(){LS('muslim-v107-installed',1);if(bar)bar.classList.remove('show')});
+  window.addEventListener('appinstalled',function(){LS('muslim-v107-installed',1);if(bar)bar.classList.remove('show');LS(K_OPEN,0);LS(K_DONE,0);setupNote('تم تثبيت التطبيق ✅','لإكمال تحديث كل الملفات على هاتفك: <b>أغلق التطبيق تمامًا ثم افتحه من أيقونته</b>، ثم أغلقه وافتحه <b>مرة أخرى</b>.',false)});
   function maybeShow(){
     if(standalone()||LG('muslim-v107-installed',0))return;
     var snooze=LG('muslim-v107-install-snooze',0);if(Date.now()<snooze)return;
+    var first=!LG(K_FIRST,0);
     if(!bar){
       bar=document.createElement('div');bar.id='v107InstallBar';
-      bar.innerHTML='<img src="app-icon-v112-192.png" width="40" height="40" alt="" style="border-radius:10px"><div style="flex:1"><b>ثبّت تطبيق المسلم</b><br><small>يعمل بلا متصفح، ويصلك التذكير بسهولة</small></div><button class="primary" id="v107InstBtn">تثبيت</button><button class="x" id="v107InstX" aria-label="إغلاق">✕</button>';
+      bar.innerHTML='<img src="app-icon-v112-192.png" width="40" height="40" alt="" style="border-radius:10px"><div style="flex:1"><b>ثبّت تطبيق المسلم الآن</b><br><small>'+(first?'أهلًا بك! التثبيت يضمن لك أحدث نسخة، والعمل بلا إنترنت، وتنبيهات الصلاة والأذكار.':'يعمل بلا متصفح، ويصلك التذكير بسهولة')+'</small></div><button class="primary" id="v107InstBtn">تثبيت</button><button class="x" id="v107InstX" aria-label="إغلاق">✕</button>';
       document.body.appendChild(bar);
       $('v107InstBtn').onclick=async function(){
-        if(dp){dp.prompt();try{var r=await dp.userChoice;if(r.outcome==='accepted')LS('muslim-v107-installed',1)}catch(e){}dp=null;bar.classList.remove('show')}
+        if(dp){dp.prompt();try{var r=await dp.userChoice;if(r.outcome==='accepted'){LS('muslim-v107-installed',1);LS(K_OPEN,0);LS(K_DONE,0)}}catch(e){}dp=null;bar.classList.remove('show')}
         else{bar.classList.remove('show');show('install')} /* خطوات التثبيت (آيفون وغيره) */
       };
       $('v107InstX').onclick=function(){bar.classList.remove('show');LS('muslim-v107-install-snooze',Date.now()+86400e3)};
     }
+    LS(K_FIRST,1);
     bar.classList.add('show');
   }
-  window.addEventListener('load',function(){setTimeout(maybeShow,2500)});
+  /* بطاقة إرشاد ما بعد التثبيت */
+  function setupNote(title,html,auto){
+    var old=document.getElementById('v115Setup');if(old)old.remove();
+    var el=document.createElement('div');el.id='v115Setup';
+    el.style.cssText='position:fixed;left:12px;right:12px;bottom:84px;z-index:99998;background:#1d624f;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.35);direction:rtl;line-height:1.8;font-size:15px';
+    el.innerHTML='<b style="display:block;font-size:17px">'+title+'</b><span>'+html+'</span><div style="margin-top:8px;text-align:left"><button type="button" id="v115SetupOk" style="border:0;border-radius:10px;padding:6px 14px;font:inherit;cursor:pointer">حسنًا</button></div>';
+    document.body.appendChild(el);
+    $('v115SetupOk').onclick=function(){el.remove()};
+    if(auto)setTimeout(function(){if(el.parentNode)el.remove()},12000);
+  }
+  /* داخل التطبيق المثبّت: عدّ الفتحات (مرة لكل جلسة) — الأولى والثانية ترشدان للإغلاق وإعادة الفتح، والثالثة تعلن اكتمال التحديث */
+  function launchGuide(){
+    if(!standalone()||LG(K_DONE,0))return;
+    var n=LG(K_OPEN,0);
+    try{if(!sessionStorage.getItem('muslim-v115-counted')){sessionStorage.setItem('muslim-v115-counted','1');n++;LS(K_OPEN,n)}}catch(e){n++;LS(K_OPEN,n)}
+    if(n<=2)setupNote('الفتحة '+n+' من 3 — إكمال التحديث','أغلق التطبيق <b>تمامًا</b> (من قائمة التطبيقات الأخيرة) ثم افتحه من أيقونته '+(n===1?'مرتين':'مرة أخرى')+' لتتحدث جميع الملفات على هاتفك.',false);
+    else{LS(K_DONE,1);setupNote('اكتمل التحديث ✅','أصبحت جميع الملفات على هاتفك بأحدث نسخة. بارك الله فيك.',true)}
+  }
+  window.v115LaunchGuide=launchGuide;
+  window.addEventListener('load',function(){setTimeout(maybeShow,2500);setTimeout(launchGuide,3500)});
 })();
 
 /* ---------------------------------------------------------------
@@ -439,4 +463,24 @@ function boot(){
   if(window.initAppLanguage)window.initAppLanguage();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,700)});else setTimeout(boot,700);
+})();
+
+
+/* ===== فحص الإصدار (v115.5) =====
+   يقارن رقم الصفحة المعروضة APP_VERSION بملف version.json (يُجلب دائمًا من الشبكة). إن كانت الصفحة أقدم:
+   يمسح كاش الغلاف ويحدّث الـ Service Worker ثم يعيد التحميل مرة واحدة لكل إصدار (حارس يمنع التكرار). */
+(function(){
+  var V=window.APP_VERSION;if(!V||!window.fetch)return;
+  function guard(v){try{if(sessionStorage.getItem('muslim-vg')===v)return false;sessionStorage.setItem('muslim-vg',v)}catch(e){}return true}
+  function check(){
+    fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+      if(!j||!j.v||j.v===V||!guard(j.v))return;
+      var jobs=[];
+      if(window.caches)jobs.push(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('muslim-cache')===0}).map(function(k){return caches.delete(k)}))}));
+      if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistration().then(function(r){return r&&r.update()}));
+      Promise.all(jobs).catch(function(){}).then(function(){(window.__muslimReload||function(){location.reload()})()});
+    }).catch(function(){});
+  }
+  setTimeout(check,1500);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')check()});
 })();
